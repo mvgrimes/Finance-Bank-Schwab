@@ -1,0 +1,13 @@
+^_build
+^Build$
+^blib
+~$
+\.bak$
+\.svn/
+^CVS/
+/CVS/
+^MANIFEST\.skip$
+.releaserc
+Finance-Bank-Schwab-[\d.]+.tar.gz
+Finance-Bank-Schwab-[\d.]+.tar
+t.pl

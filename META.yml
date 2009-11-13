@@ -1,0 +1,28 @@
+---
+name: Finance-Bank-Schwab
+version: 1.14
+author:
+  - 'Mark Grimes <mgrimes@cpan.org>'
+abstract: Check your Charles Schwab accounts from Perl
+license: perl
+resources:
+  license: http://dev.perl.org/licenses/
+build_requires:
+  File::Spec: 0
+  Test::More: 0.87
+requires:
+  Carp: 0
+  Crypt::SSLeay: 0
+  WWW::Mechanize: 1
+configure_requires:
+  Module::Build: 0.35
+provides:
+  Finance::Bank::Schwab:
+    file: lib/Finance/Bank/Schwab.pm
+    version: 1.14
+  Finance::Bank::Schwab::Account:
+    file: lib/Finance/Bank/Schwab.pm
+generated_by: Module::Build version 0.35
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
