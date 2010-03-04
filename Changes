@@ -1,5 +1,8 @@
 Changes for Finance::Bank::Schwab
 
+1.17 - Thu Mar  4 09:19:50 2010
+	Switch to HTML::Extract rather than regexes to scrape data
+
 1.16 - Thu Mar  4 08:46:20 2010
 	Updated to regex to work with the new "Cash & Cash Inv" column in the
 	Schwab accounts table.
