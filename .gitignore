@@ -3,3 +3,5 @@ MYMETA.yml
 _build/
 blib/
 Finance-Bank-Schwab-*
+Changes.bak
+tmp.log

@@ -19,8 +19,9 @@ use warnings;
 
 use Carp;
 use WWW::Mechanize;
+use HTML::TableExtract;
 
-our $VERSION = '1.16';
+our $VERSION = '1.17';
 
 our $ua = WWW::Mechanize->new(
     env_proxy  => 1,
@@ -67,57 +68,39 @@ sub check_balance {
         close $fh;
     }
 
-    my @balance_info = $content =~ m!
-                <tr[^>]*>                   \s*
-
-                    <td\ class="nWrap">     \s*
-                        <a[^>]*>            \s*
-                            ([\d\-.]+)      # account number
-                        </a>                \s*
-                        (?: <sup>[^<]*</sup> )?
-                        [^<]*
-                    </td>                   \s*
-
-                    <td[^>]*>               \s*
-                        <span[^>]*>         \s*
-                            ([^<]+)         # account name
-                        </span>             \s*
-                    </td>                   \s*
-                        
-                    <td[^>]*>               \s*
-                        <span[^>]*>         \s*
-                            [^<]*           # cash & cash investments
-                        </span>             \s*
-                    </td>                   \s*
-
-                    <td[^>]*>               \s*
-                        <span[^>]*>         \s*
-                        (-?\$[\d,\.]+)      # account balance
-                        </span>           
-            !sxig;
-
-    # use Data::Dumper;
-    # print Dumper \@balance_info;
-
     my @accounts;
-    while (@balance_info) {
-        my $number  = shift @balance_info;
-        my $name    = shift @balance_info;
-        my $balance = shift @balance_info;
-        $balance =~ s/[\$,]//xg;
 
-        push @accounts, (
-            bless {
-                balance    => $balance,
-                name       => $name,
-                sort_code  => $name,
-                account_no => $number,
-                ## parent       => $self,
-                statement => undef,
-            },
-            "Finance::Bank::Schwab::Account"
-        );
+    my $te =
+      HTML::TableExtract->new(
+        headers => [ 'Account', 'Name', '(?:Value|Available\s+Balance)' ] );
+    $te->parse($content);
+
+    for my $ts ( $te->tables ) {
+
+        # print "Table (", join( ',', $ts->coords ), "):\n";
+        for my $row ( $ts->rows ) {
+            next if $row->[0] =~ /Totals/;      # Skip total rows
+
+            $_ =~ s{^\s*|\s*$}{}g for @$row;    # Trim whitespace
+            $row->[0] =~ s{^([\d.-]+).*$}{$1}s; # Strip all but num from name
+            $row->[2] =~ s/[\$,]//xg;           # Remove $ and , from value
+
+            push @accounts, (
+                bless {
+                    balance    => $row->[2],
+                    name       => $row->[1],
+                    sort_code  => $row->[1],
+                    account_no => $row->[0],
+                    ## parent       => $self,
+                    statement => undef,
+                },
+                "Finance::Bank::Schwab::Account"
+            );
+
+            # print join( ',', @$row ), "\n";
+        }
     }
+
     return @accounts;
 }
 

@@ -6,9 +6,10 @@ my $build = Module::Build->new(
     create_readme => 1,
     ## create_makefile_pl => 'passthrough',
     requires => {
-        'Carp'           => 0,
-        'WWW::Mechanize' => 1.00,
-        'Crypt::SSLeay'  => 0,
+        'Carp'               => 0,
+        'WWW::Mechanize'     => 1.00,
+        'HTML::TableExtract' => 2,
+        'Crypt::SSLeay'      => 0,
     },
     build_requires => {
         'Test::More' => 0.87,
