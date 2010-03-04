@@ -1,3 +1,7 @@
 1.14 - Mon Nov  9 16:06:20 2009
 	Updated to work with Schwab's new site.
 
+1.16 - Thu Mar  4 08:46:20 2010
+	Updated to regex to work with the new "Cash & Cash Inv" column in the
+	Schwab accounts table.
+
