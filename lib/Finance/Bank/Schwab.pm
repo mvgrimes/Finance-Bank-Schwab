@@ -20,7 +20,7 @@ use warnings;
 use Carp;
 use WWW::Mechanize;
 
-our $VERSION = '1.15';
+our $VERSION = '1.16';
 
 our $ua = WWW::Mechanize->new(
     env_proxy  => 1,
@@ -78,10 +78,18 @@ sub check_balance {
                         [^<]*
                     </td>                   \s*
 
-                    <td[^>]*> \s* <span[^>]*> 
-                        ([^<]+)             # account name
-                    </span> \s* </td>       \s*
+                    <td[^>]*>               \s*
+                        <span[^>]*>         \s*
+                            ([^<]+)         # account name
+                        </span>             \s*
+                    </td>                   \s*
                         
+                    <td[^>]*>               \s*
+                        <span[^>]*>         \s*
+                            [^<]*           # cash & cash investments
+                        </span>             \s*
+                    </td>                   \s*
+
                     <td[^>]*>               \s*
                         <span[^>]*>         \s*
                         (-?\$[\d,\.]+)      # account balance

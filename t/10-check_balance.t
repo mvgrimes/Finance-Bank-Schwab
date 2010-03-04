@@ -15,6 +15,8 @@ plan tests => 3;
 my @accounts = Finance::Bank::Schwab->check_balance(
     			'username'	=> $userid,
     			'password'	=> $passwd,
+                # 'log' => 'tmp.log',
+                # 'content' => 'tmp.log',
 		 );
 
 ok @accounts, "check_balance returned a non-empty array";
