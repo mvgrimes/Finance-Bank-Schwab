@@ -11,3 +11,4 @@
 Finance-Bank-Schwab-[\d.]+.tar.gz
 Finance-Bank-Schwab-[\d.]+.tar
 t.pl
+^MYMETA.yml$

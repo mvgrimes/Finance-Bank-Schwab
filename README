@@ -4,20 +4,20 @@ NAME
 SYNOPSIS
       use Finance::Bank::Schwab;
       my @accounts = Finance::Bank::Schwab->check_balance(
-              username => "xxxxxxxxxxxx",
-              password => "12345",
+          username => "xxxxxxxxxxxx",
+          password => "12345",
       );
 
       foreach (@accounts) {
-              printf "%20s : %8s / %8s : USD %9.2f\n",
-              $_->name, $_->sort_code, $_->account_no, $_->balance;
+          printf "%20s : %8s / %8s : USD %9.2f\n",
+          $_->name, $_->sort_code, $_->account_no, $_->balance;
       }
-
+  
 DESCRIPTION
     This module provides a rudimentary interface to the Charles Schwab site
-    at "https://investing.schwab.com/trading/start". You will need either
-    "Crypt::SSLeay" or "IO::Socket::SSL" installed for HTTPS support to
-    work. "WWW::Mechanize" is required.
+    at `https://investing.schwab.com/trading/start'. You will need either
+    `Crypt::SSLeay' or `IO::Socket::SSL' installed for HTTPS support to
+    work. `WWW::Mechanize' is required.
 
 CLASS METHODS
   check_balance()
@@ -39,7 +39,7 @@ OBJECT METHODS
     Return the account balance as a signed floating point value.
 
 WARNING
-    This warning is verbatim from Simon Cozens' "Finance::Bank::LloydsTSB",
+    This warning is verbatim from Simon Cozens' `Finance::Bank::LloydsTSB',
     and certainly applies to this module as well.
 
     This is code for online banking, and that means your money, and that
@@ -49,7 +49,7 @@ WARNING
     but is provided under NO GUARANTEE, explicit or implied.
 
 THANKS
-    Simon Cozens for "Finance::Bank::LloydsTSB". The interface to this
+    Simon Cozens for `Finance::Bank::LloydsTSB'. The interface to this
     module, some code and the pod were all taken from Simon's module.
 
 AUTHOR
