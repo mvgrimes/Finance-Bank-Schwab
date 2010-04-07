@@ -1,5 +1,8 @@
 Changes for Finance::Bank::Schwab
 
+1.18 - Wed Apr  7 09:29:20 2010
+	Updated web scraping routine to strip off footnotes from account names
+
 1.17 - Thu Mar  4 09:19:50 2010
 	Switch to HTML::Extract rather than regexes to scrape data
 
