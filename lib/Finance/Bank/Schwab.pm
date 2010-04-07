@@ -21,7 +21,7 @@ use Carp;
 use WWW::Mechanize;
 use HTML::TableExtract;
 
-our $VERSION = '1.17';
+our $VERSION = '1.18';
 
 our $ua = WWW::Mechanize->new(
     env_proxy  => 1,
@@ -79,11 +79,12 @@ sub check_balance {
 
         # print "Table (", join( ',', $ts->coords ), "):\n";
         for my $row ( $ts->rows ) {
-            next if $row->[0] =~ /Totals/;      # Skip total rows
+            next if $row->[0] =~ /Totals/;    # Skip total rows
 
-            $_ =~ s{^\s*|\s*$}{}g for @$row;    # Trim whitespace
-            $row->[0] =~ s{^([\d.-]+).*$}{$1}s; # Strip all but num from name
-            $row->[2] =~ s/[\$,]//xg;           # Remove $ and , from value
+            $_ =~ s{^\s*|\s*$}{}g for @$row;  # Trim whitespace
+            $row->[0] =~ s{\s\d\r\n}{}s;           # Strip footnotesfrom name
+            $row->[0] =~ s{^([\d.-]+).*$}{$1}s;    # Strip all but num from name
+            $row->[2] =~ s/[\$,]//xg;              # Remove $ and , from value
 
             push @accounts, (
                 bless {
