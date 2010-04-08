@@ -21,7 +21,7 @@ use Carp;
 use WWW::Mechanize;
 use HTML::TableExtract;
 
-our $VERSION = '1.18';
+our $VERSION = '1.19';
 
 our $ua = WWW::Mechanize->new(
     env_proxy  => 1,
@@ -70,21 +70,35 @@ sub check_balance {
 
     my @accounts;
 
-    my $te =
-      HTML::TableExtract->new(
-        headers => [ 'Account', 'Name', '(?:Value|Available\s+Balance)' ] );
-    $te->parse($content);
+    my $te = HTML::TableExtract->new(
+        headers   => [ 'Account', 'Name', '(?:Value|Available\s+Balance)' ],
+        keep_html => 1,
+        ## decode    => 0,
+    );
+
+    {
+        # HTML::TableExtract warns about undef value with keep_html option
+        $SIG{__WARN__} = sub {
+            warn @_ unless $_[0] =~ /uninitialized value in subroutine entry/;
+        };
+        $te->parse($content);
+    }
 
     for my $ts ( $te->tables ) {
 
         # print "Table (", join( ',', $ts->coords ), "):\n";
+
         for my $row ( $ts->rows ) {
             next if $row->[0] =~ /Totals/;    # Skip total rows
 
-            $_ =~ s{^\s*|\s*$}{}g for @$row;  # Trim whitespace
-            $row->[0] =~ s{\s\d\r\n}{}s;           # Strip footnotesfrom name
-            $row->[0] =~ s{^([\d.-]+).*$}{$1}s;    # Strip all but num from name
-            $row->[2] =~ s/[\$,]//xg;              # Remove $ and , from value
+            # Pull relevant info from link or span tags:
+            $row->[0] =~ s{^.*<a[^>]*>(.*)</a>.*$}{$1}m;
+            $row->[1] =~ s{^.*<span[^>]*>(.*)</span>.*$}{$1}m;
+            $row->[2] =~ s{^.*<span[^>]*>(.*)</span>.*$}{$1}m;
+
+            $_ =~ s{^\s*|\s*$}{}g for @$row;    # Trim whitespace
+            $row->[0] =~ s{^([\d.-]+).*$}{$1}s; # Strip all but num from name
+            $row->[2] =~ s/[\$,]//xg;           # Remove $ and , from value
 
             push @accounts, (
                 bless {
