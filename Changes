@@ -1,5 +1,8 @@
 Changes for Finance::Bank::Schwab
 
+1.19 - Thu Apr  8 16:30:30 2010
+	Strip ALL of the footnotes out of the table fields
+
 1.18 - Wed Apr  7 09:29:20 2010
 	Updated web scraping routine to strip off footnotes from account names
 
