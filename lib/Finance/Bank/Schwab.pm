@@ -21,13 +21,19 @@ use Carp;
 use WWW::Mechanize;
 use HTML::TableExtract;
 
-our $VERSION = '1.19';
+our $VERSION = '1.20';
 
 our $ua = WWW::Mechanize->new(
     env_proxy  => 1,
     keep_alive => 1,
     timeout    => 30,
+    cookie_jar => {},
 );
+
+# Debug logging:
+# $ua->default_header( 'Accept-Encoding' => scalar HTTP::Message::decodable() );
+# $ua->add_handler( "request_send",  sub { shift->dump; return } );
+# $ua->add_handler( "response_done", sub { shift->dump; return } );
 
 sub check_balance {
     my ( $class, %opts ) = @_;
@@ -47,15 +53,23 @@ sub check_balance {
 
         my $self = bless {%opts}, $class;
 
-        $ua->get("https://investing.schwab.com/trading/start")
+        # Get the login page
+        $ua->get(
+            'https://client.schwab.com/Login/SignOn/CustomerCenterLogin.aspx')
           or croak "couldn't load inital page";
-        $ua->submit_form(
-            form_name => 'SignonForm',
-            fields    => {
-                'SignonAccountNumber' => $opts{username},
-                'SignonPassword'      => $opts{password},
-            },
-        ) or croak "couldn't sign on to account";
+
+        # Find the login form, change the action url, then set the username/
+        # password and submit
+        my $login_form = $ua->form_name('aspnetForm')
+          or croak "Couldn't find the login form";
+        $login_form->action(
+            'https://client.schwab.com/Login/SignOn/signon.ashx')
+          or croak "Couldn't update the action url on login form";
+        my $username_field =
+          'ctl00$WebPartManager1$CenterLogin$LoginUserControlId$txtLoginID';
+        $login_form->value( $username_field => $opts{username} );
+        $login_form->value( 'txtPassword'   => $opts{password} );
+        $ua->submit() or croak "couldn't sign on to account";
 
         $content = $ua->content;
     }
@@ -77,6 +91,7 @@ sub check_balance {
     );
 
     {
+
         # HTML::TableExtract warns about undef value with keep_html option
         $SIG{__WARN__} = sub {
             warn @_ unless $_[0] =~ /uninitialized value in subroutine entry/;
@@ -155,8 +170,7 @@ Finance::Bank::Schwab - Check your Charles Schwab accounts from Perl
   
 =head1 DESCRIPTION
 
-This module provides a rudimentary interface to the Charles Schwab site
-at C<https://investing.schwab.com/trading/start>. 
+This module provides a rudimentary interface to the Charles Schwab site.
 You will need either C<Crypt::SSLeay> or C<IO::Socket::SSL> installed 
 for HTTPS support to work. C<WWW::Mechanize> is required.
 

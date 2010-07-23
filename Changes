@@ -1,5 +1,9 @@
 Changes for Finance::Bank::Schwab
 
+1.20 - Fri Jul 23 10:10:39 EDT 2010
+	Updated the login form/post routine to accommodate the new Schwab login
+	procedures.
+
 1.19 - Thu Apr  8 16:30:30 2010
 	Strip ALL of the footnotes out of the table fields
 
