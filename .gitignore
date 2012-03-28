@@ -1,5 +1,6 @@
 Build
 MYMETA.yml
+MYMETA.json
 _build/
 blib/
 Finance-Bank-Schwab-*

@@ -21,7 +21,7 @@ use Carp;
 use WWW::Mechanize;
 use HTML::TableExtract;
 
-our $VERSION = '1.20';
+our $VERSION = '1.21';
 
 our $ua = WWW::Mechanize->new(
     env_proxy  => 1,
@@ -104,7 +104,7 @@ sub check_balance {
         # print "Table (", join( ',', $ts->coords ), "):\n";
 
         for my $row ( $ts->rows ) {
-            next if $row->[0] =~ /Totals/;    # Skip total rows
+            next if $row->[1] =~ /Totals/;    # Skip total rows
 
             # Pull relevant info from link or span tags:
             $row->[0] =~ s{^.*<a[^>]*>(.*)</a>.*$}{$1}m;
