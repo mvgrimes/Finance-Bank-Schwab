@@ -21,7 +21,7 @@ use Carp;
 use WWW::Mechanize;
 use HTML::TableExtract;
 
-our $VERSION = '1.21';
+our $VERSION = '1.22';
 
 our $ua = WWW::Mechanize->new(
     env_proxy  => 1,
@@ -106,10 +106,10 @@ sub check_balance {
         for my $row ( $ts->rows ) {
             next if $row->[1] =~ /Totals/;    # Skip total rows
 
-            # Pull relevant info from link or span tags:
-            $row->[0] =~ s{^.*<a[^>]*>(.*)</a>.*$}{$1}m;
-            $row->[1] =~ s{^.*<span[^>]*>(.*)</span>.*$}{$1}m;
-            $row->[2] =~ s{^.*<span[^>]*>(.*)</span>.*$}{$1}m;
+            # Simple regex to strip html from cells
+            $row->[0] =~ s{<[^>]*>}{}mg;
+            $row->[1] =~ s{<[^>]*>}{}mg;
+            $row->[2] =~ s{<[^>]*>}{}mg;
 
             $_ =~ s{^\s*|\s*$}{}g for @$row;    # Trim whitespace
             $row->[0] =~ s{^([\d.-]+).*$}{$1}s; # Strip all but num from name

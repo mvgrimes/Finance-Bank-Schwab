@@ -12,3 +12,4 @@ t/97-critic.t
 t/98-pod.t
 t/99-podcoverage.t
 t/perlcriticrc
+META.json
