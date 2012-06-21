@@ -1,5 +1,8 @@
 Changes for Finance::Bank::Schwab
 
+1.22 - Thu Jun 21 18:10:00 EDT 2012
+	Updates the table parsing to work with new Schwab html
+
 1.21 - Wed Mar 28 19:35:21 EDT 2012
     Updates to avoid picking up Totals line in table
 
