@@ -1,5 +1,8 @@
 Changes for Finance::Bank::Schwab
 
+1.23 - Thu Jun 21 18:56:58 EDT 2012
+	Removes superscripted notes from account numbers
+
 1.22 - Thu Jun 21 18:10:00 EDT 2012
 	Updates the table parsing to work with new Schwab html
 

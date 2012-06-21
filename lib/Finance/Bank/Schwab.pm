@@ -21,7 +21,7 @@ use Carp;
 use WWW::Mechanize;
 use HTML::TableExtract;
 
-our $VERSION = '1.22';
+our $VERSION = '1.23';
 
 our $ua = WWW::Mechanize->new(
     env_proxy  => 1,
@@ -105,6 +105,11 @@ sub check_balance {
 
         for my $row ( $ts->rows ) {
             next if $row->[1] =~ /Totals/;    # Skip total rows
+
+            # Remove any superscripts
+            $row->[0] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+            $row->[1] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+            $row->[2] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
 
             # Simple regex to strip html from cells
             $row->[0] =~ s{<[^>]*>}{}mg;
