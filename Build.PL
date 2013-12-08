@@ -7,10 +7,9 @@ my $build = Module::Build->new(
     ## create_makefile_pl => 'passthrough',
     requires => {
         'Carp'                 => 0,
-        'WWW::Mechanize'       => 1.00,
+        'WWW::Mechanize'       => '1.00',
         'HTML::TableExtract'   => 2,
-        'Crypt::SSLeay'        => 0,
-        'LWP::Protocol::https' => 0,
+        'LWP::Protocol::https' => '6.00',
     },
     build_requires => {
         'Test::More' => 0.87,
