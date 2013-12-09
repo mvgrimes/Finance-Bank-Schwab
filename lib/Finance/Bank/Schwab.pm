@@ -4,8 +4,8 @@ package Finance::Bank::Schwab;
 # Finance::Bank::Schwab
 # Mark Grimes
 #
-# Check you account blances at Charles Schwab.
-# Copyright (c) 2005-2009 Mark Grimes (mgrimes@cpan.org).
+# Check you account balances at Charles Schwab.
+# Copyright (c) 2005-2013 Mark Grimes (mgrimes@cpan.org).
 # All rights reserved. This program is free software; you can redistribute
 # it and/or modify it under the same terms as Perl itself.
 #
@@ -21,7 +21,7 @@ use Carp;
 use WWW::Mechanize;
 use HTML::TableExtract;
 
-our $VERSION = '1.23';
+our $VERSION = '2.02';
 
 our $ua = WWW::Mechanize->new(
     env_proxy  => 1,
@@ -85,7 +85,7 @@ sub check_balance {
     my @accounts;
 
     my $te = HTML::TableExtract->new(
-        headers   => [ 'Account', 'Name', '(?:Value|Available\s+Balance)' ],
+        headers   => [ 'Account', 'Name', '(?:Value|Available\s+Balance)', '(?:Cash|Balance\sOwed)' ],
         keep_html => 1,
         ## decode    => 0,
     );
@@ -110,24 +110,136 @@ sub check_balance {
             $row->[0] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
             $row->[1] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
             $row->[2] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+            $row->[3] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
 
             # Simple regex to strip html from cells
             $row->[0] =~ s{<[^>]*>}{}mg;
             $row->[1] =~ s{<[^>]*>}{}mg;
             $row->[2] =~ s{<[^>]*>}{}mg;
+            $row->[3] =~ s{<[^>]*>}{}mg;
 
             $_ =~ s{^\s*|\s*$}{}g for @$row;    # Trim whitespace
             $row->[0] =~ s{^([\d.-]+).*$}{$1}s; # Strip all but num from name
             $row->[2] =~ s/[\$,]//xg;           # Remove $ and , from value
+            $row->[3] =~ s/[\$,]//xg;           # Remove $ and , from value
+
+		# If this is an account with positions, let's go grab that data, too.
+		if($row->[0] =~ /\d{4}-\d{4}/){
+			my @positions;
+			my $acct = $row->[0];
+			$acct =~ s/-//;
+			
+			if( $opts{content} ) {
+				# Read in the available files
+				        open my $fh, "<", $acct or confess;
+					$content = do { local $/ = undef; <$fh> };
+					close $fh; 
+			} else {
+				# Grab the data from the Schwab site
+				$ua->get("https://client.schwab.com/Accounts/Positions/AccountPositionsSummary.aspx?selAcct=$acct") or croak "couldn't load position page for $acct";
+				$content = $ua->content;
+
+				if ( $opts{log} ) {
+					# Dump to a log file (based on acct #)
+					open( my $fh, ">", $acct ) or confess;
+					print $fh $content;
+					close $fh;
+				}
+			}
+
+			my $te = HTML::TableExtract->new(
+			headers   => [ 'Symbol', 'Quantity', 'Price', 'Change' ],
+			keep_html => 1,
+			## decode    => 0,
+			);
+
+			{
+
+			# HTML::TableExtract warns about undef value with keep_html option
+			$SIG{__WARN__} = sub {
+			    warn @_ unless $_[0] =~ /uninitialized value in subroutine entry/;
+			};
+			$te->parse($content);
+			}
+
+			for my $ts ( $te->tables ) {
+
+				# print "Table (", join( ',', $ts->coords ), "):\n";
+				no warnings 'uninitialized';
+
+				for my $row ( $ts->rows ) {
+					next if $row->[2] eq '';    	# Skip empty rows (There's an oddity here where it's most efficient to check the Price column)
+					next if $row->[0] =~ /Total/;    # Skip total rows
+
+					# Remove any superscripts
+					$row->[0] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+					$row->[1] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+					$row->[2] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+					$row->[3] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+
+					# Let's call out if these are stocks/bonds/cash/unknown in case the user finds this helpful
+					if($row->[0] =~ m/SymbolRouting/){
+						# This is a Stock
+						$row->[4] = 'Stock';
+					} elsif($row->[0] =~ m/TradeBondSuperPopUp/){
+						# This is a Bond.  James Bond.
+						$row->[4] = 'Bond';
+					} elsif($row->[0] =~ m/Cash/){
+						# This is Cash
+						$row->[4] = 'Cash';
+					} else {
+						# I don't know what this is
+						$row->[4] = 'Unknown';
+					}
+
+					# Simple regex to strip html from cells
+					$row->[0] =~ s{<[^>]*>}{}mg;
+					$row->[1] =~ s{<[^>]*>}{}mg;
+					$row->[2] =~ s{<[^>]*>}{}mg;
+					$row->[3] =~ s{<[^>]*>}{}mg;
+
+					$_ =~ s{^\s*|\s*$}{}g for @$row;    # Trim whitespace
+					$row->[1] =~ s/[,]//xg;           # Remove , from value
+					$row->[2] =~ s/[\$,]//xg;           # Remove $ and , from value
+					$row->[3] =~ s/[\$,]//xg;           # Remove $ and , from value
+
+					if($row->[0] =~ m/Cash/){
+						# The "Cash & Cash Investments" line is screwy, where the value is in the "Change" column.  Let's correct it and set "shares" to be 1, but price to be value.
+						$row->[0] = 'Cash';	# Trim off the "& Cash Investments" part
+						$row->[1] = 1;
+						$row->[2] = $row->[3];
+					}
+
+					if($row->[4] =~ m/Bond/){
+						# The Bond types use funny math, where bond prices are shown per 100 shares.  Correction is to divide price or quantity by 100.  I elect price.
+						$row->[2] = $row->[2] / 100;
+					}
+
+					push @positions, {
+					      symbol => $row->[0],
+					      quantity => $row->[1],
+					      price => $row->[2],
+					      type => $row->[4]
+					};
+				}
+			}
+			$row->[4] = \@positions;
+
+		} else {
+			# Probably a banking account, ignore for now
+			$row->[4] = '';
+		}
 
             push @accounts, (
                 bless {
-                    balance    => $row->[2],
-                    name       => $row->[1],
-                    sort_code  => $row->[1],
-                    account_no => $row->[0],
+                    positions	=> $row->[4],	# Reference to an array of references to hashes...
+                    cash	=> $row->[3],
+                    balance	=> $row->[2],
+                    name	=> $row->[1],
+                    sort_code	=> $row->[1],
+                    account_no	=> $row->[0],
                     ## parent       => $self,
-                    statement => undef,
+                    statement	=> undef,
                 },
                 "Finance::Bank::Schwab::Account"
             );
@@ -167,17 +279,26 @@ Finance::Bank::Schwab - Check your Charles Schwab accounts from Perl
       username => "xxxxxxxxxxxx",
       password => "12345",
   );
-
+  
   foreach (@accounts) {
-      printf "%20s : %8s / %8s : USD %9.2f\n",
-      $_->name, $_->sort_code, $_->account_no, $_->balance;
+      printf "%20s : %8s / %8s : USD %9.2f USD %9.2f\n",
+      $_->name, $_->sort_code, $_->account_no, $_->cash, $_->balance;
+      if($_->positions){ 
+          foreach my $arrayref ($_->positions) {
+              foreach $hashref (@$arrayref){
+                  print "\t" . $$hashref{"type"} . "\t" . $$hashref{"symbol"} . "\t" . $$hashref{"quantity"} . " Shares \@\t\$" . $$hashref{"price"} ."\n";
+              }
+              print "\n";
+          } 
+      }
   }
   
 =head1 DESCRIPTION
 
 This module provides a rudimentary interface to the Charles Schwab site.
 You will need either C<Crypt::SSLeay> or C<IO::Socket::SSL> installed 
-for HTTPS support to work. C<WWW::Mechanize> is required.
+for HTTPS support to work. C<WWW::Mechanize> is required.  If you encounter
+odd errors, install C<Net::SSLeay> and it may resolve itself.
 
 =head1 CLASS METHODS
 
@@ -200,6 +321,19 @@ other Finance::Bank::* modules.
   $ac->balance
 
 Return the account balance as a signed floating point value.
+
+  $ac->cash
+
+Return the cash balance as a signed floating point value. This is useful if
+the account has margin borrowing as the balance alone doesn't do justice.
+
+  $ac->positions
+
+References an array of hash references. Each hash holds the following:
+	      ->symbol		(String)
+	      ->quantity	(Signed Float)
+	      ->price		(Signed Float)
+	      ->type		(Stock/Bond/Cash/Unknown)
 
 =head1 WARNING
 
