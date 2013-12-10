@@ -4,17 +4,23 @@ my $build = Module::Build->new(
     module_name   => 'Finance::Bank::Schwab',
     license       => 'perl',
     create_readme => 1,
-    ## create_makefile_pl => 'passthrough',
+
+    configure_requires => {
+        'Module::Build' => '0.4004',
+    },
+
     requires => {
         'Carp'                 => 0,
         'WWW::Mechanize'       => '1.00',
         'HTML::TableExtract'   => 2,
         'LWP::Protocol::https' => '6.00',
     },
-    build_requires => {
+
+    build_requires => { # Really test_requires, but MB still doesn't handle well
         'Test::More' => 0.87,
         'File::Spec' => 0,
     },
+
     add_to_cleanup => [ 'Finance-Bank-Schwab-*', 'Debian_CPANTS.txt' ],
     meta_merge     => {
         resources => {
@@ -24,5 +30,5 @@ my $build = Module::Build->new(
         }
     },
 );
-$build->create_build_script;
 
+$build->create_build_script;
