@@ -41,9 +41,11 @@ odd errors, install `Net::SSLeay` and it may resolve itself.
 
 ## check\_balance()
 
-    check_balance( usename => $u, password => $p )
+    check_balance( usename => $u, password => $p, get_positions => 1 )
 
-Return an array of account objects, one for each of your bank accounts.
+Return an array of account objects, one for each of your bank accounts. If 
+the `get_positions` flag is true then account positions (share counts,
+prices, etc) will be retrieved as well.
 
 # OBJECT METHODS
 
@@ -66,11 +68,13 @@ the account has margin borrowing as the balance alone doesn't do justice.
 
     $ac->positions
 
-References an array of hash references. Each hash holds the following:
-	      ->symbol		(String)
-	      ->quantity	(Signed Float)
-	      ->price		(Signed Float)
-	      ->type		(Stock/Bond/Cash/Unknown)
+Returns a reference to an array of Finance::Bank::Schwab::Account::Positions
+objects. Each provides the following method:
+
+    $position->symbol      (String)
+    $position->quantity    (Signed Float)
+    $position->price       (Signed Float)
+    $position->type        (Stock/Bond/Cash/Unknown)
 
 # WARNING
 
@@ -88,8 +92,8 @@ to me, but is provided under __NO GUARANTEE__, explicit or implied.
 Simon Cozens for `Finance::Bank::LloydsTSB`. The interface to this module,
 some code and the pod were all taken from Simon's module.
 
-The ability to retrieve stock/bond/etc positions was contributed by Ryan Clark
-<ryan.clark9@gmail.com>.
+Thanks to Ryan Clark <ryan.clark9@gmail.com> for contributing the initial
+implementation of the share count/price/etc retrieval routines.
 
 # AUTHOR
 
