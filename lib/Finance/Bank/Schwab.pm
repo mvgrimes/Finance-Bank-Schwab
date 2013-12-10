@@ -1,19 +1,7 @@
 package Finance::Bank::Schwab;
 
-###########################################################################
-# Finance::Bank::Schwab
-# Mark Grimes
-#
-# Check you account balances at Charles Schwab.
-# Copyright (c) 2005-2013 Mark Grimes (mgrimes@cpan.org).
-# All rights reserved. This program is free software; you can redistribute
-# it and/or modify it under the same terms as Perl itself.
-#
-# Parts of this package were inspired by:
-#   Simon Cozens - Finance::Bank::Lloyds module
-# Thanks!
-#
-###########################################################################
+# ABSTRCT: Check your account balances at Charles Schwab.
+
 use strict;
 use warnings;
 
@@ -21,7 +9,7 @@ use Carp;
 use WWW::Mechanize;
 use HTML::TableExtract;
 
-our $VERSION = '2.02';
+our $VERSION = '2.03';
 
 our $ua = WWW::Mechanize->new(
     env_proxy  => 1,
@@ -85,7 +73,10 @@ sub check_balance {
     my @accounts;
 
     my $te = HTML::TableExtract->new(
-        headers   => [ 'Account', 'Name', '(?:Value|Available\s+Balance)', '(?:Cash|Balance\sOwed)' ],
+        headers => [
+            'Account',                       'Name',
+            '(?:Value|Available\s+Balance)', '(?:Cash|Balance\sOwed)'
+        ],
         keep_html => 1,
         ## decode    => 0,
     );
@@ -123,123 +114,141 @@ sub check_balance {
             $row->[2] =~ s/[\$,]//xg;           # Remove $ and , from value
             $row->[3] =~ s/[\$,]//xg;           # Remove $ and , from value
 
-		# If this is an account with positions, let's go grab that data, too.
-		if($row->[0] =~ /\d{4}-\d{4}/){
-			my @positions;
-			my $acct = $row->[0];
-			$acct =~ s/-//;
-			
-			if( $opts{content} ) {
-				# Read in the available files
-				        open my $fh, "<", $acct or confess;
-					$content = do { local $/ = undef; <$fh> };
-					close $fh; 
-			} else {
-				# Grab the data from the Schwab site
-				$ua->get("https://client.schwab.com/Accounts/Positions/AccountPositionsSummary.aspx?selAcct=$acct") or croak "couldn't load position page for $acct";
-				$content = $ua->content;
+            # If this is an account with positions, let's go grab that data, too.
+            if ( $row->[0] =~ /\d{4}-\d{4}/ ) {
+                my @positions;
+                my $acct = $row->[0];
+                $acct =~ s/-//;
 
-				if ( $opts{log} ) {
-					# Dump to a log file (based on acct #)
-					open( my $fh, ">", $acct ) or confess;
-					print $fh $content;
-					close $fh;
-				}
-			}
+                if ( $opts{content} ) {
 
-			my $te = HTML::TableExtract->new(
-			headers   => [ 'Symbol', 'Quantity', 'Price', 'Change' ],
-			keep_html => 1,
-			## decode    => 0,
-			);
+                    # Read in the available files
+                    open my $fh, "<", $acct or confess;
+                    $content = do { local $/ = undef; <$fh> };
+                    close $fh;
+                } else {
 
-			{
+                    # Grab the data from the Schwab site
+                    $ua->get(
+                        "https://client.schwab.com/Accounts/Positions/AccountPositionsSummary.aspx?selAcct=$acct"
+                    ) or croak "couldn't load position page for $acct";
+                    $content = $ua->content;
 
-			# HTML::TableExtract warns about undef value with keep_html option
-			$SIG{__WARN__} = sub {
-			    warn @_ unless $_[0] =~ /uninitialized value in subroutine entry/;
-			};
-			$te->parse($content);
-			}
+                    if ( $opts{log} ) {
 
-			for my $ts ( $te->tables ) {
+                        # Dump to a log file (based on acct #)
+                        open( my $fh, ">", $acct ) or confess;
+                        print $fh $content;
+                        close $fh;
+                    }
+                }
 
-				# print "Table (", join( ',', $ts->coords ), "):\n";
-				no warnings 'uninitialized';
+                my $te = HTML::TableExtract->new(
+                    headers   => [ 'Symbol', 'Quantity', 'Price', 'Change' ],
+                    keep_html => 1,
+                    ## decode    => 0,
+                );
 
-				for my $row ( $ts->rows ) {
-					next if $row->[2] eq '';    	# Skip empty rows (There's an oddity here where it's most efficient to check the Price column)
-					next if $row->[0] =~ /Total/;    # Skip total rows
+                {
 
-					# Remove any superscripts
-					$row->[0] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
-					$row->[1] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
-					$row->[2] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
-					$row->[3] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+                    # HTML::TableExtract warns about undef value with keep_html option
+                    $SIG{__WARN__} = sub {
+                        warn @_
+                          unless $_[0] =~
+                          /uninitialized value in subroutine entry/;
+                    };
+                    $te->parse($content);
+                }
 
-					# Let's call out if these are stocks/bonds/cash/unknown in case the user finds this helpful
-					if($row->[0] =~ m/SymbolRouting/){
-						# This is a Stock
-						$row->[4] = 'Stock';
-					} elsif($row->[0] =~ m/TradeBondSuperPopUp/){
-						# This is a Bond.  James Bond.
-						$row->[4] = 'Bond';
-					} elsif($row->[0] =~ m/Cash/){
-						# This is Cash
-						$row->[4] = 'Cash';
-					} else {
-						# I don't know what this is
-						$row->[4] = 'Unknown';
-					}
+                for my $ts ( $te->tables ) {
 
-					# Simple regex to strip html from cells
-					$row->[0] =~ s{<[^>]*>}{}mg;
-					$row->[1] =~ s{<[^>]*>}{}mg;
-					$row->[2] =~ s{<[^>]*>}{}mg;
-					$row->[3] =~ s{<[^>]*>}{}mg;
+                    # print "Table (", join( ',', $ts->coords ), "):\n";
+                    no warnings 'uninitialized';
 
-					$_ =~ s{^\s*|\s*$}{}g for @$row;    # Trim whitespace
-					$row->[1] =~ s/[,]//xg;           # Remove , from value
-					$row->[2] =~ s/[\$,]//xg;           # Remove $ and , from value
-					$row->[3] =~ s/[\$,]//xg;           # Remove $ and , from value
+                    for my $row ( $ts->rows ) {
+                        next
+                          if $row->[2] eq ''
+                          ; # Skip empty rows (There's an oddity here where it's most efficient to check the Price column)
+                        next if $row->[0] =~ /Total/;    # Skip total rows
 
-					if($row->[0] =~ m/Cash/){
-						# The "Cash & Cash Investments" line is screwy, where the value is in the "Change" column.  Let's correct it and set "shares" to be 1, but price to be value.
-						$row->[0] = 'Cash';	# Trim off the "& Cash Investments" part
-						$row->[1] = 1;
-						$row->[2] = $row->[3];
-					}
+                        # Remove any superscripts
+                        $row->[0] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+                        $row->[1] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+                        $row->[2] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
+                        $row->[3] =~ s{<sup[^>]*>[^<]*</sup>}{}mg;
 
-					if($row->[4] =~ m/Bond/){
-						# The Bond types use funny math, where bond prices are shown per 100 shares.  Correction is to divide price or quantity by 100.  I elect price.
-						$row->[2] = $row->[2] / 100;
-					}
+                        # Let's call out if these are stocks/bonds/cash/unknown in case the user finds this helpful
+                        if ( $row->[0] =~ m/SymbolRouting/ ) {
 
-					push @positions, {
-					      symbol => $row->[0],
-					      quantity => $row->[1],
-					      price => $row->[2],
-					      type => $row->[4]
-					};
-				}
-			}
-			$row->[4] = \@positions;
+                            # This is a Stock
+                            $row->[4] = 'Stock';
+                        } elsif ( $row->[0] =~ m/TradeBondSuperPopUp/ ) {
 
-		} else {
-			# Probably a banking account, ignore for now
-			$row->[4] = '';
-		}
+                            # This is a Bond.  James Bond.
+                            $row->[4] = 'Bond';
+                        } elsif ( $row->[0] =~ m/Cash/ ) {
+
+                            # This is Cash
+                            $row->[4] = 'Cash';
+                        } else {
+
+                            # I don't know what this is
+                            $row->[4] = 'Unknown';
+                        }
+
+                        # Simple regex to strip html from cells
+                        $row->[0] =~ s{<[^>]*>}{}mg;
+                        $row->[1] =~ s{<[^>]*>}{}mg;
+                        $row->[2] =~ s{<[^>]*>}{}mg;
+                        $row->[3] =~ s{<[^>]*>}{}mg;
+
+                        $_ =~ s{^\s*|\s*$}{}g for @$row;    # Trim whitespace
+                        $row->[1] =~ s/[,]//xg;      # Remove , from value
+                        $row->[2] =~ s/[\$,]//xg;    # Remove $ and , from value
+                        $row->[3] =~ s/[\$,]//xg;    # Remove $ and , from value
+
+                        if ( $row->[0] =~ m/Cash/ ) {
+
+                            # The "Cash & Cash Investments" line is screwy, where the value is in the "Change" column.  Let's correct it and set "shares" to be 1, but price to be value.
+                            $row->[0] =
+                              'Cash';   # Trim off the "& Cash Investments" part
+                            $row->[1] = 1;
+                            $row->[2] = $row->[3];
+                        }
+
+                        if ( $row->[4] =~ m/Bond/ ) {
+
+                            # The Bond types use funny math, where bond prices are shown per 100 shares.  Correction is to divide price or quantity by 100.  I elect price.
+                            $row->[2] = $row->[2] / 100;
+                        }
+
+                        push @positions,
+                          {
+                            symbol   => $row->[0],
+                            quantity => $row->[1],
+                            price    => $row->[2],
+                            type     => $row->[4] };
+                    }
+                }
+                $row->[4] = \@positions;
+
+            } else {
+
+                # Probably a banking account, ignore for now
+                $row->[4] = '';
+            }
 
             push @accounts, (
                 bless {
-                    positions	=> $row->[4],	# Reference to an array of references to hashes...
-                    cash	=> $row->[3],
-                    balance	=> $row->[2],
-                    name	=> $row->[1],
-                    sort_code	=> $row->[1],
-                    account_no	=> $row->[0],
+                    positions => $row->[4]
+                    ,    # Reference to an array of references to hashes...
+                    cash       => $row->[3],
+                    balance    => $row->[2],
+                    name       => $row->[1],
+                    sort_code  => $row->[1],
+                    account_no => $row->[0],
                     ## parent       => $self,
-                    statement	=> undef,
+                    statement => undef,
                 },
                 "Finance::Bank::Schwab::Account"
             );
@@ -265,8 +274,6 @@ sub AUTOLOAD {
 1;
 
 __END__
-
-# Below is stub documentation for your module. You'd better edit it!
 
 =head1 NAME
 
@@ -351,13 +358,16 @@ to me, but is provided under B<NO GUARANTEE>, explicit or implied.
 Simon Cozens for C<Finance::Bank::LloydsTSB>. The interface to this module,
 some code and the pod were all taken from Simon's module.
 
+The ability to retrieve stock/bond/etc positions was contributed by Ryan Clark
+<ryan.clark9@gmail.com>.
+
 =head1 AUTHOR
 
 Mark Grimes <mgrimes@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2005-9 by mgrimes
+Copyright (C) 2005-13 by <mgrimes@cpan.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.2 or,
